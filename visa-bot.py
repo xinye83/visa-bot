@@ -58,6 +58,7 @@ try:
     print(
         "There are no available appointments at the selected location. Please try again later."
     )
+    browser.quit()
     sys.exit(1)
 except NoSuchElementException:
     pass
