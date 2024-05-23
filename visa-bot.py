@@ -1,12 +1,15 @@
+from pathlib import Path
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import NoSuchElementException
-import sys
-from pathlib import Path
+from selenium.webdriver.support.ui import Select
+
 
 TIMEOUT = 20
+
+# how many available slots do I want
+NUM_SLOT = 50
 
 USERNAME, PASSWORD = Path("SECRETS").read_text().strip("\n").split("\n")
 
@@ -53,14 +56,67 @@ WebDriverWait(browser, timeout=TIMEOUT).until(
     EC.visibility_of_element_located((By.ID, "consulate-appointment-fields"))
 )
 
-try:
-    browser.find_element(By.ID, "consulate_date_time_not_available")
-    print(
-        "There are no available appointments at the selected location. Please try again later."
+assert (
+    browser.find_element(By.ID, "consulate_date_time_not_available").get_attribute(
+        "style"
     )
-    browser.quit()
-    sys.exit(1)
-except NoSuchElementException:
-    pass
+    != "display: none;"
+)
+
+# choose location
+
+Select(
+    browser.find_element(By.ID, "appointments_consulate_appointment_facility_id")
+).select_by_visible_text("Toronto")
+
+# open calendar
+
+WebDriverWait(browser, timeout=TIMEOUT).until(
+    EC.element_to_be_clickable((By.ID, "appointments_consulate_appointment_date"))
+).click()
+
+# go through calendar
+
+slots = list()
+year = None
+month = None
+
+while len(slots) < NUM_SLOT:
+    # make sure the calendar is updated after clicking next
+    while True:
+        first = browser.find_element(
+            By.XPATH,
+            '//*[contains(@class ,"ui-datepicker-group")][contains(@class ,"ui-datepicker-group-first")]',
+        )
+
+        year_new = first.find_element(By.CLASS_NAME, "ui-datepicker-year").text
+        month_new = first.find_element(By.CLASS_NAME, "ui-datepicker-month").text
+
+        if (year is None and month is None) or year_new != year or month_new != month:
+            year = year_new
+            month = month_new
+            break
+
+        browser.implicitly_wait(1)
+
+    for item in (
+        first.find_element(By.CLASS_NAME, "ui-datepicker-calendar")
+        .find_element(By.TAG_NAME, "tbody")
+        .find_elements(By.TAG_NAME, "td")
+    ):
+        if "ui-datepicker-unselectable" in item.get_attribute("class"):
+            continue
+
+        day = item.find_element(By.CLASS_NAME, "ui-state-default").text
+
+        slots.append(f"{month}-{day}-{year}")
+
+    browser.find_element(
+        By.XPATH,
+        '//*[contains(text(), "Next")][contains(@class ,"ui-icon")][contains(@class ,"ui-icon-circle-triangle-e")]',
+    ).click()
+
+print(f"The earliest {NUM_SLOT} available slots are:")
+print("\n".join(slots))
 
 browser.quit()
