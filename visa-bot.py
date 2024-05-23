@@ -50,17 +50,8 @@ WebDriverWait(browser, timeout=TIMEOUT).until(
     )
 ).click()
 
-# abort on error
-
 WebDriverWait(browser, timeout=TIMEOUT).until(
     EC.visibility_of_element_located((By.ID, "consulate-appointment-fields"))
-)
-
-assert (
-    browser.find_element(By.ID, "consulate_date_time_not_available").get_attribute(
-        "style"
-    )
-    != "display: none;"
 )
 
 # choose location
@@ -68,6 +59,23 @@ assert (
 Select(
     browser.find_element(By.ID, "appointments_consulate_appointment_facility_id")
 ).select_by_visible_text("Toronto")
+
+# wait until the page is updated
+
+WebDriverWait(browser, TIMEOUT).until(
+    EC.none_of(
+        EC.text_to_be_present_in_element_attribute(
+            (By.ID, "appointments_consulate_address"), "style", "opacity"
+        )
+    )
+)
+
+# abort on error
+
+if "display: block;" in browser.find_element(
+    By.ID, "consulate_date_time_not_available"
+).get_attribute("style"):
+    raise Exception("There are no available appointments at the selected location.")
 
 # open calendar
 
