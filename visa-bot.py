@@ -3,13 +3,12 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import Select
 
 
-TIMEOUT = 20
+TIMEOUT = 10
 
 # how many available slots do I want
-NUM_SLOT = 50
+NUM_SLOT = 20
 
 USERNAME, PASSWORD = Path("SECRETS").read_text().strip("\n").split("\n")
 
@@ -53,29 +52,6 @@ WebDriverWait(browser, timeout=TIMEOUT).until(
 WebDriverWait(browser, timeout=TIMEOUT).until(
     EC.visibility_of_element_located((By.ID, "consulate-appointment-fields"))
 )
-
-# choose location
-
-Select(
-    browser.find_element(By.ID, "appointments_consulate_appointment_facility_id")
-).select_by_visible_text("Toronto")
-
-# wait until the page is updated
-
-WebDriverWait(browser, TIMEOUT).until(
-    EC.none_of(
-        EC.text_to_be_present_in_element_attribute(
-            (By.ID, "appointments_consulate_address"), "style", "opacity"
-        )
-    )
-)
-
-# abort on error
-
-if "display: block;" in browser.find_element(
-    By.ID, "consulate_date_time_not_available"
-).get_attribute("style"):
-    raise Exception("There are no available appointments at the selected location.")
 
 # open calendar
 
